@@ -3,6 +3,7 @@
 | File | What |
 |---|---|
 | `aht30_datasheet.pdf` | Aosong AHT30 datasheet (Chinese, A2, 2023-09), from the WeAct repo |
+| `aht30_datasheet_en.md` | English translation of the AHT30 datasheet (unofficial; the PDF is authoritative) |
 | `aht20_datasheet_en.pdf` | English AHT20 datasheet (same protocol family; used for the RH formula) |
 | `weact_module_v10_schematic.pdf` | WeAct AHTxx module V1.0 schematic |
 | `me6231_datasheet.pdf` | Microne ME6231 LDO family datasheet (module regulator) |
@@ -18,7 +19,7 @@ Source: github.com/WeActStudio/WeActStudio.AHTxxModule
   `Status, H[19:12], H[11:4], H[3:0]|T[19:16], T[15:8], T[7:0], CRC`.
 - Status: bit7 busy, bit4 CRC_flag (OTP check), bit3 calibration enabled.
 - CRC8: init 0xFF, poly 0x31, over the first 6 bytes.
-- `T[C] = ST / 2^20 * 200 - 50`; `RH[%] = SRH / 2^20 * 100` (RH formula from the AHT20 sheet).
+- `T[C] = ST / 2^20 * 200 - 50`; `RH[%] = SRH / 2^20 * 100` (both formulas are also in the AHT30 sheet, section 5.2 step 4).
 - Sample no faster than once per second and keep I2C at 10-400 kHz to keep self-heating under 0.1 C.
 - The AHT30 sheet has no init sequence; the AHT20 sheet's 0x1B/0x1C/0x1E init does not appear in it.
 
