@@ -2,7 +2,7 @@
  * @file main.c
  * @author gary
  * @date 2026-10-17
- * @brief Main function
+ * @brief Clock, GPIO and Timer0 setup; once a second reads the AHT30 and shows it on the OLED
  */
 #include <stdint.h>
 #include <string.h>
@@ -36,7 +36,8 @@ static void osc_init_16mhz(void)
 
 // 28-pin device: PORTA, PORTB, PORTC only (RE3 is input-only MCLR/VPP).
 // Every pin is driven low except RB6/RB7 (ICSPCLK/ICSPDAT, left as inputs so the PICkit 4
-// can program/debug without contention) and RC3/RC4 (MSSP1 SCL1/SDA1, must be inputs).
+// can program/debug without contention) and RC3/RC4 (MSSP1 SCL1/SDA1, left as inputs; the
+// bus clear in i2c1_reset() only ever pulls them low, never drives them high).
 static void gpio_init(void)
 {
     LATA = 0x00;

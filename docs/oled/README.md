@@ -29,12 +29,13 @@ Source: github.com/WeActStudio/WeActStudio.OLEDModule (`Doc/`, `Hardware/`,
 - Horizontal addressing (`20h 00h`) with a `21h`/`22h` column/page window: the column
   pointer wraps to the window start and advances the page; at the window end it returns to
   the start. `oled.c` uses this to send each text run as one transfer.
-- Reset values that `oled.c` relies on: 64 MUX, display offset 0, start line 0,
+- Reset values that `oled.c` sends explicitly in `init_cmds` (so `oled_init()` also works as
+  the recovery path after a bus error): 64 MUX, display offset 0, start line 0,
   alternative COM pin config (DAh 12h), contrast 7Fh, normal display, VCOMH ~0.77 VCC.
 - `A1h` + `C8h` together rotate the image 180 degrees. WeAct calls that "normal" (pin
   header at the top).
 - WeAct's init sends `DBh 40h`; the SSD1315 table only defines A[5:4] for DBh, so `oled.c`
-  leaves VCOMH at its reset value.
+  sends the reset value `DBh 20h` (~0.77 VCC) instead.
 
 ## Bus sharing
 
