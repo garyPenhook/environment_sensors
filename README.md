@@ -21,3 +21,4 @@ driven low; RB6/RB7 (ICSP) are left as inputs.
 | inc                         | Headers for the sources above, plus `board.h` (`_XTAL_FREQ`)                                         |
 | docs/aht30                  | AHT30 and module datasheets, schematic, WeAct example, and a README of verified facts and voltages   |
 | docs/oled                   | README of verified SSD1315 / WeAct OLED facts (datasheets kept local, not committed)                 |
+| docs/scd41                  | Planned SCD41 CO2 sensor: Mouser part options and facts still to verify (datasheets kept local)      |

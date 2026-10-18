@@ -5,3 +5,5 @@ docs/oled/*
 !docs/oled/README.md
 docs/aht30/*.pdf
 docs/aht30/weact_*
+docs/scd41/*
+!docs/scd41/README.md
