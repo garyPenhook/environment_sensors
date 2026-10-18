@@ -18,7 +18,8 @@ endforeach()
 set(pic_test_default_default_XC8_FILE_TYPE_compile
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/aht30.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/i2c1.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/main.c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/main.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/oled.c")
 set_source_files_properties(${pic_test_default_default_XC8_FILE_TYPE_compile} PROPERTIES LANGUAGE C)
 set(pic_test_default_default_XC8_FILE_TYPE_link)
 set(pic_test_default_image_name "default.elf")

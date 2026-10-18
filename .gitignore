@@ -1,3 +1,5 @@
 _build/
 out/
 docs/pic18f27q10/
+docs/oled/*
+!docs/oled/README.md

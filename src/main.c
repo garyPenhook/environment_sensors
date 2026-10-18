@@ -10,6 +10,7 @@
 #include "../inc/aht30.h"
 #include "../inc/board.h"
 #include "../inc/i2c1.h"
+#include "../inc/oled.h"
 
 // Boot straight into HFINTOSC at 1 MHz (HFFRQ = 4 MHz, CDIV = 4:1) instead of the
 // EXTOSC manufacturing default, and keep clock switching enabled (DS40002043F, CONFIG1).
@@ -64,6 +65,78 @@ static volatile unsigned char tick_count;   // free-running, wraps every 256 tic
 static volatile int16_t g_temp_x100;
 static volatile uint16_t g_rh_x100;
 static volatile aht30_status_t g_aht30_status;
+static uint8_t g_have_reading;              // g_temp_x100/g_rh_x100 hold a valid sample
+
+// Cleared by any failed OLED write; the main loop then re-runs oled_init() on the next
+// sample, so a display that was unplugged or glitched comes back without a reset.
+static uint8_t g_oled_ok;
+
+// Writes v / 100 as text right-aligned in 6 characters ("-40.00" .. "100.00") plus a NUL.
+static void fmt_x100(char *buf, int16_t v)
+{
+    uint16_t u = v < 0 ? (uint16_t)-v : (uint16_t)v;
+    uint8_t i = 6;
+
+    buf[6] = '\0';
+    do {
+        buf[--i] = (char)('0' + u % 10);
+        u /= 10;
+        if (i == 4) {
+            buf[--i] = '.';
+        }
+    } while (u != 0 || i > 2);    // at least "0.00"
+    if (v < 0) {
+        buf[--i] = '-';
+    }
+    while (i != 0) {
+        buf[--i] = ' ';
+    }
+}
+
+// Layout: labels on pages 0 and 4, 2x values on pages 1-2 and 5-6, sensor status on 7.
+static bool oled_draw_labels(void)
+{
+    return oled_text(0, 0, "Temperature") && oled_text(0, 4, "Humidity");
+}
+
+// value / 100 right-aligned in 6 characters, or "---.--" before the first sample, then
+// the unit. buf must hold 7 + strlen(unit) bytes.
+static void fmt_value(char *buf, int16_t value, const char *unit)
+{
+    if (g_have_reading) {
+        fmt_x100(buf, value);
+    } else {
+        for (uint8_t i = 0; i < 6; i++) {
+            buf[i] = i == 3 ? '.' : '-';
+        }
+    }
+    buf += 6;
+    while ((*buf++ = *unit++) != '\0') {
+    }
+}
+
+static bool oled_draw_reading(void)
+{
+    static const char *const status_text[] = {      // indexed by aht30_status_t
+        "AHT30 OK       ",
+        "AHT30 bus error",
+        "AHT30 busy     ",
+        "AHT30 CRC error",
+    };
+    char buf[10];
+
+    fmt_value(buf, g_temp_x100, OLED_DEG "C");
+    if (!oled_text_2x(0, 1, buf)) {
+        return false;
+    }
+    fmt_value(buf, (int16_t)g_rh_x100, "%RH");
+    if (!oled_text_2x(0, 5, buf)) {
+        return false;
+    }
+    // OK with no sample yet only happens before the first fetch.
+    return oled_text(0, 7, g_have_reading || g_aht30_status != AHT30_OK ?
+                           status_text[g_aht30_status] : "AHT30 waiting  ");
+}
 
 static void tmr0_init_20ms(void)
 {
@@ -99,6 +172,9 @@ int main(){
 
     i2c1_init();
     aht30_init();
+    // aht30_init() has already waited 10 ms; the SSD1315 wants >= 20 ms after VDD (t0).
+    __delay_ms(20);
+    g_oled_ok = oled_init() && oled_draw_labels() && oled_draw_reading();
 
     tmr0_init_20ms();
     INTCONbits.PEIE = 1;      // IPEN = 0 (default): GIE + PEIE enable peripheral interrupts
@@ -108,6 +184,10 @@ int main(){
     unsigned char start_tick = 0;
 
     while(1) {
+        // Set whenever g_aht30_status or the reading changes; a failed start never
+        // reaches a fetch, so it has to refresh the display too.
+        unsigned char redraw = 0;
+
         if (!measuring) {
             if (sample_due) {
                 sample_due = 0;
@@ -115,6 +195,8 @@ int main(){
                 if (g_aht30_status == AHT30_OK) {
                     start_tick = tick_count;
                     measuring = 1;
+                } else {
+                    redraw = 1;
                 }
             }
         } else if ((unsigned char)(tick_count - start_tick) >= AHT30_WAIT_TICKS) {
@@ -126,6 +208,17 @@ int main(){
             if (g_aht30_status == AHT30_OK) {
                 g_temp_x100 = t;
                 g_rh_x100 = rh;
+                g_have_reading = 1;
+            }
+            redraw = 1;
+        }
+
+        if (redraw) {
+            if (!g_oled_ok) {
+                g_oled_ok = oled_init() && oled_draw_labels();
+            }
+            if (g_oled_ok) {
+                g_oled_ok = oled_draw_reading();
             }
         }
     }
