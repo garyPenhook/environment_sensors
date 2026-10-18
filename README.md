@@ -1,11 +1,43 @@
-
 # pic_test
 
-PIC18F27Q10 at 5 V, HFINTOSC 16 MHz. Timer0 interrupt toggles RC2 every 500 ms and
-triggers a once-a-second read of a WeAct AHT30 temperature/humidity module over MSSP1
-I2C (RC3 = SCL1, RC4 = SDA1, SMBus input levels). Each reading is shown on a WeAct 0.96"
-SSD1315 OLED on the same bus (temperature, humidity, sensor status). Unused pins are
-driven low; RB6/RB7 (ICSP) are left as inputs.
+A small temperature and humidity monitor on a PIC18F27Q10. Once a second it reads a
+WeAct AHT30 sensor and shows the temperature, relative humidity and sensor status on a
+WeAct 0.96" OLED. Both modules share one I2C bus. Written in C for XC8.
+
+## Parts
+
+| Part | Role |
+|------|------|
+| PIC18F27Q10 (28-pin), 5 V, HFINTOSC 16 MHz | Microcontroller |
+| WeAct AHT30 module (AHTxx V1.0) | Temperature / humidity sensor, I2C 0x38, on-board 3.3 V LDO and 4.7 kohm pull-ups |
+| WeAct 0.96" OLED module V1.0 | 128x64 display, SSD1315 controller, I2C 0x3C |
+| PICkit 4 | Programming and debugging (ICSP on RB6/RB7) |
+
+An SCD41 CO2 sensor is planned; see `docs/scd41`.
+
+## What it does
+
+- Timer0 interrupts every 20 ms. RC2 toggles every 500 ms (heartbeat) and every 50 ticks
+  (1 s) a sample is triggered.
+- The AHT30 measurement is non-blocking: start a conversion, do other work, fetch the
+  result about 120 ms later and check its CRC.
+- Temperature and humidity are shown in large text with a status line (OK, bus error, busy,
+  CRC error). Only the characters that changed are redrawn, with a full redraw about every
+  minute. A display that was unplugged or glitched is re-initialised on the next sample.
+- A failed I2C transaction runs a bus clear (clock SCL until a stuck slave releases SDA,
+  then STOP) so one hung device cannot block the other.
+
+## Wiring
+
+| Signal | Pin |
+|--------|-----|
+| I2C SCL (MSSP1) | RC3 |
+| I2C SDA (MSSP1) | RC4 |
+| Heartbeat toggle | RC2 |
+| ICSP clock / data | RB6 / RB7 (left as inputs) |
+
+The bus is pulled up to 3.3 V on the modules, so the PIC only ever pulls SCL/SDA low and
+uses SMBus input levels. Unused pins are driven low.
 
 ## Structure
 
