@@ -52,18 +52,20 @@ void aht30_init(void)
     __delay_ms(10);         // datasheet: wait >= 5 ms after VDD before talking to the sensor
 }
 
-aht30_status_t aht30_read(int16_t *temp_x100, uint16_t *rh_x100)
+aht30_status_t aht30_start(void)
 {
-    uint8_t buf[7];
-
     // Trigger a measurement: 0x70 0xAC 0x33 0x00
     if (!i2c1_start() || !i2c1_write(AHT30_ADDR_W) || !i2c1_write(0xAC) ||
         !i2c1_write(0x33) || !i2c1_write(0x00) || !i2c1_stop()) {
         i2c1_reset();
         return AHT30_ERR_BUS;
     }
+    return AHT30_OK;
+}
 
-    __delay_ms(100);        // datasheet: >= 80 ms; extra margin covers oscillator tolerance
+aht30_status_t aht30_fetch(int16_t *temp_x100, uint16_t *rh_x100)
+{
+    uint8_t buf[7];
 
     // Read Status, H[19:12], H[11:4], H[3:0]|T[19:16], T[15:8], T[7:0], CRC
     if (!i2c1_start() || !i2c1_write(AHT30_ADDR_R)) {

@@ -50,9 +50,15 @@ static void gpio_init(void)
 
 #define TMR0_TICKS_PER_SAMPLE 50    // 1 s: AHT30 should not be sampled faster
 
+// The first tick after aht30_start() can come 0-20 ms later, so waiting 6 ticks gives
+// 100-120 ms: the datasheet's >= 80 ms plus margin for oscillator tolerance. Starts
+// here follow a tick, so it is ~120 ms in practice; the CPU is free meanwhile.
+#define AHT30_WAIT_TICKS 6
+
 static volatile unsigned char tmr0_ticks;
 static volatile unsigned char sample_ticks;
 static volatile unsigned char sample_due;
+static volatile unsigned char tick_count;   // free-running, wraps every 256 ticks (5.12 s)
 
 // Latest AHT30 reading (x100) and last status, for the debugger watch window.
 static volatile int16_t g_temp_x100;
@@ -74,6 +80,7 @@ static void __interrupt() isr(void)
 {
     if (PIE0bits.TMR0IE && PIR0bits.TMR0IF) {
         PIR0bits.TMR0IF = 0;
+        tick_count++;
         if (++sample_ticks >= TMR0_TICKS_PER_SAMPLE) {
             sample_ticks = 0;
             sample_due = 1;
@@ -97,13 +104,25 @@ int main(){
     INTCONbits.PEIE = 1;      // IPEN = 0 (default): GIE + PEIE enable peripheral interrupts
     INTCONbits.GIE = 1;
 
+    unsigned char measuring = 0;
+    unsigned char start_tick = 0;
+
     while(1) {
-        if (sample_due) {
+        if (!measuring) {
+            if (sample_due) {
+                sample_due = 0;
+                g_aht30_status = aht30_start();
+                if (g_aht30_status == AHT30_OK) {
+                    start_tick = tick_count;
+                    measuring = 1;
+                }
+            }
+        } else if ((unsigned char)(tick_count - start_tick) >= AHT30_WAIT_TICKS) {
             int16_t t;
             uint16_t rh;
 
-            sample_due = 0;
-            g_aht30_status = aht30_read(&t, &rh);
+            measuring = 0;
+            g_aht30_status = aht30_fetch(&t, &rh);
             if (g_aht30_status == AHT30_OK) {
                 g_temp_x100 = t;
                 g_rh_x100 = rh;
