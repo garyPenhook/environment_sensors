@@ -51,9 +51,18 @@ Optional data logger memory for the shared MSSP1 bus. Datasheet DS20001203Y
 - The 300 ns rise-time limit allows about 75 pF of bus capacitance with the 4.7 kohm
   AHT30 pull-ups (20-80% rise ~ 0.85 RC). The datasheet recommends 2 kohm at 400 kHz.
   Keep the wiring short; the added load of a third device is small.
-- Capacity: 32 KB. At 4 bytes per sample once a minute that is about 5.7 days; with a
-  6-byte record (adding CO2) about 3.8 days. Written as a ring buffer, a page is
-  rewritten once per pass, so the 1M-cycle endurance is not a concern at that rate.
+- Capacity: 32 KB (32,768 bytes). Chosen logging rate is one sample every 30 minutes
+  (48 per day, 1,440 per 30 days):
+
+  | Record | 30 days | Whole chip holds |
+  |---|---|---|
+  | 4 bytes (temperature, humidity) | 5,760 bytes | 8,192 samples, about 170 days |
+  | 6 bytes (adding CO2) | 8,640 bytes | 5,461 samples, about 113 days |
+
+  A month uses 18-26% of the chip. Written as a ring buffer, the 1M-cycle per-page
+  endurance is not a concern at this rate. For comparison, one sample a minute would need
+  172,800 bytes a month and does not fit; the 1 Mbit parts (24LC1025/24LC1026, datasheets
+  not read) would be needed.
 - Writes block for up to 5 ms. The AHT30 conversion is already non-blocking, so write
   one page per sample, outside the 20 ms Timer0 tick handler.
 
