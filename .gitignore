@@ -7,3 +7,5 @@ docs/aht30/*.pdf
 docs/aht30/weact_*
 docs/scd41/*
 !docs/scd41/README.md
+docs/eeprom/*
+!docs/eeprom/README.md
