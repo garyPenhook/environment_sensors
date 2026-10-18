@@ -2,20 +2,25 @@
 
 #include "../inc/i2c1.h"
 
-// Busy-wait budget for one MSSP operation. A byte takes ~72 us at 125 kHz; this
-// is far longer, so it only expires if the bus is stuck.
-#define I2C1_TIMEOUT 3000U
+// Busy-wait budget for one MSSP operation, in polls of SSP1IF (~7 instruction cycles
+// each at -Os): 255 x 7 = ~1785 Tcy = ~7 ms at FOSC/4 = 250 kHz. The longest normal
+// operation (byte + ACK = 9 SCL periods at 62.5 kHz) is 144 us = 36 Tcy, so this only
+// expires if the bus is stuck or the slave stretches SCL for milliseconds.
+#define I2C1_TIMEOUT 255U
 
-// SCL = FOSC / (4 * (SSP1ADD + 1)) = 1 MHz / (4 * 2) = 125 kHz (AHT30: 10-400 kHz).
-#define I2C1_ADD 1U
+// SCL = FOSC / (4 * (SSP1ADD + 1)) = 1 MHz / (4 * 4) = 62.5 kHz (AHT30: 10-400 kHz).
+// SSP1ADD values 0x00-0x02 are not valid for the I2C baud rate generator
+// (DS40002043F, 28.7), so 3 is the fastest setting at FOSC = 1 MHz.
+#define I2C1_ADD 3U
 
-// MSSP is idle when no start/restart/stop/receive/ack is pending and no byte is
-// being transmitted (SSP1STAT.R_nW ORed with SEN/RSEN/PEN/RCEN/ACKEN).
-static bool wait_idle(void)
+// SSP1IF is set by hardware when a Start, Stop, byte + ACK, received byte or
+// Acknowledge sequence completes (DS40002043F, 28.6). Each operation clears it
+// before starting, so a flag left over from an aborted operation can't satisfy this.
+static bool wait_done(void)
 {
-    uint16_t n = I2C1_TIMEOUT;
+    uint8_t n = I2C1_TIMEOUT;
 
-    while ((SSP1CON2 & 0x1F) || SSP1STATbits.R_nW) {
+    while (!PIR3bits.SSP1IF) {
         if (--n == 0) {
             return false;
         }
@@ -46,30 +51,25 @@ void i2c1_reset(void)
 
 bool i2c1_start(void)
 {
-    if (!wait_idle()) {
-        return false;
-    }
+    PIR3bits.SSP1IF = 0;
     SSP1CON2bits.SEN = 1;
-    return wait_idle();
+    return wait_done();
 }
 
 bool i2c1_stop(void)
 {
-    if (!wait_idle()) {
-        return false;
-    }
+    PIR3bits.SSP1IF = 0;
     SSP1CON2bits.PEN = 1;
-    return wait_idle();
+    return wait_done();
 }
 
 bool i2c1_write(uint8_t data)
 {
-    if (!wait_idle()) {
-        return false;
-    }
+    PIR3bits.SSP1IF = 0;
     SSP1CON1bits.WCOL = 0;
     SSP1BUF = data;
-    if (!wait_idle() || SSP1CON1bits.WCOL) {
+    // WCOL is set at the write itself if the MSSP wasn't idle; nothing was sent then.
+    if (SSP1CON1bits.WCOL || !wait_done()) {
         return false;
     }
     return !SSP1CON2bits.ACKSTAT;
@@ -77,23 +77,15 @@ bool i2c1_write(uint8_t data)
 
 bool i2c1_read(uint8_t *data, bool ack)
 {
-    uint16_t n = I2C1_TIMEOUT;
-
-    if (!wait_idle()) {
-        return false;
-    }
+    PIR3bits.SSP1IF = 0;
     SSP1CON2bits.RCEN = 1;
-    while (!SSP1STATbits.BF) {
-        if (--n == 0) {
-            return false;
-        }
+    if (!wait_done()) {       // set after the 8th falling SCL edge, together with BF
+        return false;
     }
     *data = SSP1BUF;
 
-    if (!wait_idle()) {
-        return false;
-    }
+    PIR3bits.SSP1IF = 0;
     SSP1CON2bits.ACKDT = ack ? 0 : 1;
     SSP1CON2bits.ACKEN = 1;
-    return wait_idle();
+    return wait_done();
 }
