@@ -1,7 +1,7 @@
 
 # pic_test
 
-PIC18F27Q10 at 5 V, HFINTOSC 1 MHz. Timer0 interrupt toggles RC2 every 500 ms and
+PIC18F27Q10 at 5 V, HFINTOSC 16 MHz. Timer0 interrupt toggles RC2 every 500 ms and
 triggers a once-a-second read of a WeAct AHT30 temperature/humidity module over MSSP1
 I2C (RC3 = SCL1, RC4 = SDA1, SMBus input levels). Each reading is shown on a WeAct 0.96"
 SSD1315 OLED on the same bus (temperature, humidity, sensor status). Unused pins are

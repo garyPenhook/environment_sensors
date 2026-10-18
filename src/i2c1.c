@@ -4,15 +4,19 @@
 #include "../inc/i2c1.h"
 
 // Busy-wait budget for one MSSP operation, in polls of SSP1IF (~7 instruction cycles
-// each at -Os): 255 x 7 = ~1785 Tcy = ~7 ms at FOSC/4 = 250 kHz. The longest normal
-// operation (byte + ACK = 9 SCL periods at 62.5 kHz) is 144 us = 36 Tcy, so this only
-// expires if the bus is stuck or the slave stretches SCL for milliseconds.
+// each at -Os): 255 x 7 = ~1785 Tcy = ~446 us at FOSC/4 = 4 MHz. The longest normal
+// operation (byte + ACK = 9 SCL periods at 333 kHz) is 27 us = 108 Tcy, so this only
+// expires if the bus is stuck or a slave stretches SCL for over ~0.4 ms. Neither the
+// AHT30 nor the SSD1315 datasheet describes clock stretching.
 #define I2C1_TIMEOUT 255U
 
-// SCL = FOSC / (4 * (SSP1ADD + 1)) = 1 MHz / (4 * 4) = 62.5 kHz (AHT30: 10-400 kHz).
+// SCL = FOSC / (4 * (SSP1ADD + 1)) = 16 MHz / (4 * 12) = 333 kHz; each half period is
+// 2 * (SSP1ADD + 1) / FOSC = 1.5 us. The binding limit is the 1.3 us minimum SCL low time
+// (AHT30 table 8, PIC SP101), with HFINTOSC up to 5% fast (figure 39-5): 1.43 us worst
+// case. 9 (table 28-1's 400 kHz) or 10 would leave no margin for the oscillator.
 // SSP1ADD values 0x00-0x02 are not valid for the I2C baud rate generator
-// (DS40002043F, 28.7), so 3 is the fastest setting at FOSC = 1 MHz.
-#define I2C1_ADD 3U
+// (DS40002043F, 28.7).
+#define I2C1_ADD 11U
 
 // PPS output codes for RC3PPS/RC4PPS; i2c1_reset() swaps them out and back.
 #define PPS_SCL1 0x0F             // MSSP1 SCK/SCL
@@ -54,14 +58,15 @@ void i2c1_init(void)
 
     SSP1ADD = I2C1_ADD;
     SSP1CON2 = 0x00;
-    SSP1STAT = 0xC0;          // SMP = 1 (no slew control, <= 1 MHz), CKE = 1 (SMBus inputs)
+    SSP1STAT = 0x40;          // SMP = 0 (slew rate control for 400 kHz), CKE = 1 (SMBus inputs)
+    SSP1CON3 = 0x08;          // SDAHT: >= 300 ns SDA hold, the SSD1315 SDAIN minimum (table 9-6)
     SSP1CON1 = SSP1CON1_MASTER;
     PIR3bits.SSP1IF = 0;
 }
 
-// Minimum half SCL period of the bus clear, so it stays in spec at any FOSC. At 1 MHz the
-// call and loop overhead dominates: ~9 kHz in the simulator, well under the SSD1315
-// (tcycle >= 2.5 us) and AHT30 (<= 400 kHz) limits.
+// Minimum half SCL period of the bus clear, so it stays in spec at any FOSC. At 16 MHz
+// the clear clocks at ~62 kHz in the simulator, well under the SSD1315 (tcycle >= 2.5 us)
+// and AHT30 (<= 400 kHz) limits.
 #define BUS_CLEAR_HALF_US 5
 
 // Waits for a released SCL to read high, allowing a slave to stretch the clock.

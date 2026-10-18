@@ -17,8 +17,8 @@ bool i2c1_read(uint8_t *data, bool ack);
 
 /**
  * Recover from a failed transaction: disable the MSSP, clock SCL until a slave holding
- * SDA lets go, send a STOP, re-enable. Measured at FOSC = 1 MHz, -Os (simulator): 0.3 ms idle
- * bus, 1.3 ms with SDA held for 9 clocks, 6 ms if SCL is held low (gives up, no STOP).
+ * SDA lets go, send a STOP, re-enable. Measured at FOSC = 16 MHz, -Os (simulator): 43 us on an
+ * idle bus, 190 us with SDA held for 9 clocks, 390 us if SCL is held low (gives up, no STOP).
  */
 void i2c1_reset(void);
 

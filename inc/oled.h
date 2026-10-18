@@ -20,8 +20,8 @@
 
 /**
  * Display off, set orientation, clear RAM, charge pump on, display on (SSD1315 6.9.2).
- * The panel needs >= 20 ms after VDD before this (datasheet t0). Clearing sends 1 KB, so
- * at 62.5 kHz SCL this blocks for a few hundred ms.
+ * The panel needs >= 20 ms after VDD before this (datasheet t0). Clearing sends ~1 KB:
+ * about 38 ms at 333 kHz SCL and FOSC = 16 MHz.
  */
 bool oled_init(void);
 

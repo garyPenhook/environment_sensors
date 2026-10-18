@@ -254,10 +254,13 @@ bool oled_text(uint8_t col, uint8_t page, const char *s)
     while (n--) {
         const uint8_t *g = glyph(*s++);
 
-        for (uint8_t i = 0; i < 6; i++) {
-            if (!i2c1_write(i < 5 ? g[i] : 0x00)) {
+        for (uint8_t i = 5; i; i--) {
+            if (!i2c1_write(*g++)) {
                 return fail();
             }
+        }
+        if (!i2c1_write(0x00)) {        // blank column between characters
+            return fail();
         }
     }
     return end();
@@ -282,16 +285,20 @@ bool oled_text_2x(uint8_t col, uint8_t page, const char *s)
         for (uint8_t k = n; k; k--) {
             const uint8_t *g = glyph(*p++);
 
-            for (uint8_t i = 0; i < 12; i++) {
-                uint8_t b = 0x00;
+            // Each glyph column is expanded once and sent twice (2x horizontally).
+            for (uint8_t i = 5; i; i--) {
+                uint8_t b = *g++;
 
-                if (i < 10) {
-                    b = g[i >> 1];
-                    b = spread4[half ? b >> 4 : b & 0x0F];
+                if (half) {
+                    b = (uint8_t)(b >> 4);
                 }
-                if (!i2c1_write(b)) {
+                b = spread4[b & 0x0F];
+                if (!i2c1_write(b) || !i2c1_write(b)) {
                     return fail();
                 }
+            }
+            if (!i2c1_write(0x00) || !i2c1_write(0x00)) {
+                return fail();
             }
         }
     }

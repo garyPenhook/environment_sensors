@@ -20,7 +20,8 @@ Source: github.com/WeActStudio/WeActStudio.OLEDModule (`Doc/`, `Hardware/`,
 - Control byte after the address: `Co D/C# 0 0 0 0 0 0`. Co = 0 means the rest of the
   transfer is all data bytes, D/C# = 0 makes them commands, 1 makes them GDDRAM data
   (`0x00` = command stream, `0x40` = data stream).
-- I2C timing (table 9-6): tcycle >= 2.5 us (400 kHz max). The bus runs at 62.5 kHz.
+- I2C timing (table 9-6): tcycle >= 2.5 us (400 kHz max); SDAIN data hold >= 300 ns. The
+  bus runs at 333 kHz (16 MHz / 48) with the MSSP's SDAHT set for a 300 ns hold.
 - Power-on with charge pump (6.9.2): wait >= 20 ms after VDD is stable, then `8Dh 14h`
   (charge pump on, 7.5 V), then `AFh`. SEG/COM drive starts within 100 ms.
   Power-off: `AEh`, then `8Dh 10h`.
