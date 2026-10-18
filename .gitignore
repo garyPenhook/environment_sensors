@@ -3,3 +3,5 @@ out/
 docs/pic18f27q10/
 docs/oled/*
 !docs/oled/README.md
+docs/aht30/*.pdf
+docs/aht30/weact_*

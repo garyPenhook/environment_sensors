@@ -11,6 +11,8 @@
 
 Source: github.com/WeActStudio/WeActStudio.AHTxxModule
 
+The PDFs and `weact_*` files are kept locally and gitignored, not committed.
+
 ## Facts from the datasheets
 
 - I2C address 0x38 (write byte 0x70, read byte 0x71). Module schematic: "ADDR: 0x38".
