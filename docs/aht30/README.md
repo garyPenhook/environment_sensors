@@ -38,5 +38,8 @@ Source: github.com/WeActStudio/WeActStudio.AHTxxModule
   threshold (VIH 2.1 V, DS40002043F table 39-4). Set `SSP1STAT.CKE = 1` ("Enables
   SMBus-specific inputs", I2C mode), which `i2c1_init()` does. INLVLC does not select this:
   on RC3/RC4 the MSSP uses its own I2C/SMBus buffers.
+- `i2c1_reset()` reads RC3/RC4 as PORT pins for the bus clear, so `i2c1_init()` sets
+  INLVLC3/4 = 0 (TTL, VIH 2.0 V at 4.5-5.5 V, D320). The reset value is ST, whose VIH of
+  0.8 VDD = 4.0 V (D322) would read a 3.3 V bus as low.
 - Pins: RC3 = SCL1, RC4 = SDA1 (PPS input defaults `SSP1CLKPPS`/`SSP1DATPPS`; outputs mapped
   with `RC3PPS = 0x0F`, `RC4PPS = 0x10`).

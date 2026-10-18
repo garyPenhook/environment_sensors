@@ -15,7 +15,11 @@ bool i2c1_write(uint8_t data);
 /** Reads one byte; ack = true sends ACK (more bytes follow), false sends NACK (last byte). */
 bool i2c1_read(uint8_t *data, bool ack);
 
-/** Disable/re-enable the MSSP to drop any stuck transaction. */
+/**
+ * Recover from a failed transaction: disable the MSSP, clock SCL until a slave holding
+ * SDA lets go, send a STOP, re-enable. Measured at FOSC = 1 MHz, -Os (simulator): 0.3 ms idle
+ * bus, 1.3 ms with SDA held for 9 clocks, 6 ms if SCL is held low (gives up, no STOP).
+ */
 void i2c1_reset(void);
 
 #endif
